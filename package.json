@@ -1,0 +1,45 @@
+{
+  "name": "pi-queue-steer",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Visible steering and follow-up queues with inline editing for Pi.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Thomas Mustier",
+  "contributors": [
+    "Ali Abbas"
+  ],
+  "keywords": [
+    "pi-package",
+    "pi-extension",
+    "queue",
+    "steering",
+    "follow-up",
+    "tui"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/alivault/pi-queue-steer.git"
+  },
+  "bugs": "https://github.com/alivault/pi-queue-steer/issues",
+  "homepage": "https://github.com/alivault/pi-queue-steer",
+  "files": [
+    "index.ts",
+    "editor-render.ts",
+    "queue-state.ts",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md",
+    "assets/pi-queue-steer-demo.gif"
+  ],
+  "pi": {
+    "extensions": [
+      "index.ts"
+    ]
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-ai": "*",
+    "@earendil-works/pi-coding-agent": "*",
+    "@earendil-works/pi-tui": "*"
+  }
+}
