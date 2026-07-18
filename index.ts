@@ -101,7 +101,8 @@ class QueueTimelineWidget implements Component {
 				this.theme.fg("accent", `S${steering.length}`),
 				this.theme.fg("warning", `F${followUps.length}`),
 			].join(" ");
-			const summary = `queued ${counts}${this.paused ? " paused" : ""}${this.hasUnsavedChanges() ? " unsaved" : ""}`;
+			const selected = this.selectedPosition();
+			const summary = `${selected ?? `queued ${counts}`}${this.paused ? " paused" : ""}${this.hasUnsavedChanges() ? " unsaved" : ""}`;
 			return [truncateToWidth(summary, width, "")];
 		}
 
@@ -115,6 +116,16 @@ class QueueTimelineWidget implements Component {
 		return lines;
 	}
 
+	private selectedPosition(): string | undefined {
+		if (!this.editingId) return undefined;
+		const selected = this.items.find((item) => item.id === this.editingId);
+		if (!selected) return undefined;
+		const laneItems = this.items.filter((item) => item.lane === selected.lane);
+		const index = laneItems.findIndex((item) => item.id === selected.id);
+		if (index === -1) return undefined;
+		return `${laneLabel(selected.lane)} ${index + 1}/${laneItems.length}`;
+	}
+
 	private helpText(): string {
 		const followUp = keyText("app.message.followUp");
 		const submit = keyText("tui.input.submit");
@@ -122,7 +133,9 @@ class QueueTimelineWidget implements Component {
 		const selectKeys = `${SELECT_PREVIOUS_ROW_KEY}/${SELECT_NEXT_ROW_KEY}`;
 		const moveKeys = `${MOVE_PREVIOUS_ROW_KEY}/${MOVE_NEXT_ROW_KEY}`;
 		if (this.editingId) {
-			return `${selectKeys} select · ${moveKeys} move · ${REMOVE_ROW_KEY} remove · ${submit} save · ${interrupt} cancel`;
+			const position = this.selectedPosition();
+			const positionPrefix = position ? `${position} · ` : "";
+			return `${positionPrefix}${selectKeys} select · ${moveKeys} move · ${REMOVE_ROW_KEY} remove · ${submit} save · ${interrupt} cancel`;
 		}
 		if (this.paused) {
 			return `${submit} resume · ${MOVE_PREVIOUS_ROW_KEY} edit · ${interrupt} keep paused`;

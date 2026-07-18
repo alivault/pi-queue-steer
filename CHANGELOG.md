@@ -7,6 +7,7 @@
 - Simplify lane titles and move shared keybinding help below the queue boxes.
 - Use consistent diamond and circle queue-state icons, with distinct `⏸` paused and `◈` editing-held states.
 - Preserve normal `Up`/`Down` suggestion navigation while autocomplete is visible.
+- Show the selected lane position, such as `steer 2/4`, in the shared help line.
 - Show a shared `• unsaved` indicator for pending text, order, lane, and removal changes.
 - Keep `Option+X` removal marks, restored by `Escape` or a second press and compatible with image-only rows.
 
