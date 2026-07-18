@@ -40,6 +40,7 @@ The extension follows your configured Pi action bindings. These are the default 
 | Agent working | `Option+Enter` | Add a visible follow-up for after the run |
 | Queue visible | `Option+Up` | Enter editing at the most recently queued row |
 | Editing a row | `Up` or `Down` | Keep the current draft and select the previous or next visual row |
+| Autocomplete visible | `Up` or `Down` | Navigate suggestions without changing the selected queue row |
 | Editing a row | `Option+Up` or `Option+Down` | Move the selected row; crossing a section boundary moves it to the other lane |
 | Editing a row | Type normally | Edit directly inside the selected row |
 | Editing a row | `Option+X` | Mark the selected row for removal; save deletes it, a second press restores it |
@@ -66,7 +67,8 @@ The extension hands messages back to Pi’s native queues only when their delive
 ## Editing semantics
 
 - `Option+Up` starts editing at the row you queued most recently
-- `Up` and `Down` then select rows through the visible timeline
+- `Up` and `Down` then select rows through the visible timeline, except while autocomplete is open
+- autocomplete keeps its normal `Up` and `Down` suggestion navigation
 - `Option+Up` and `Option+Down` reorder the selected row within its section
 - moving past a section boundary transfers the row to the adjacent lane at that boundary
 - queue moves preview immediately and commit only when the editing session is saved

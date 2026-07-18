@@ -497,11 +497,11 @@ export default function queueSteerExtension(pi: ExtensionAPI) {
 						moveQueueItem(ctx, "next");
 						return;
 					}
-					if (matchesKey(data, SELECT_PREVIOUS_ROW_KEY)) {
+					if (!isShowingAutocomplete() && matchesKey(data, SELECT_PREVIOUS_ROW_KEY)) {
 						selectQueueItem(ctx, "previous");
 						return;
 					}
-					if (matchesKey(data, SELECT_NEXT_ROW_KEY)) {
+					if (!isShowingAutocomplete() && matchesKey(data, SELECT_NEXT_ROW_KEY)) {
 						selectQueueItem(ctx, "next");
 						return;
 					}
