@@ -70,6 +70,7 @@ class QueueTimelineWidget implements Component {
 	private readonly items: TimelineItem[];
 	private readonly editingId: string | undefined;
 	private readonly renderInlineEditor: InlineEditorRenderer | undefined;
+	private readonly hasUnsavedChanges: () => boolean;
 	private readonly paused: boolean;
 	private readonly modes: QueueModes;
 	private readonly theme: Theme;
@@ -78,6 +79,7 @@ class QueueTimelineWidget implements Component {
 		items: TimelineItem[];
 		editingId: string | undefined;
 		renderInlineEditor: InlineEditorRenderer | undefined;
+		hasUnsavedChanges: () => boolean;
 		paused: boolean;
 		modes: QueueModes;
 		theme: Theme;
@@ -85,6 +87,7 @@ class QueueTimelineWidget implements Component {
 		this.items = options.items;
 		this.editingId = options.editingId;
 		this.renderInlineEditor = options.renderInlineEditor;
+		this.hasUnsavedChanges = options.hasUnsavedChanges;
 		this.paused = options.paused;
 		this.modes = options.modes;
 		this.theme = options.theme;
@@ -98,14 +101,17 @@ class QueueTimelineWidget implements Component {
 				this.theme.fg("accent", `S${steering.length}`),
 				this.theme.fg("warning", `F${followUps.length}`),
 			].join(" ");
-			const summary = `queued ${counts}${this.paused ? " paused" : ""}`;
+			const summary = `queued ${counts}${this.paused ? " paused" : ""}${this.hasUnsavedChanges() ? " unsaved" : ""}`;
 			return [truncateToWidth(summary, width, "")];
 		}
 
 		const lines: string[] = [];
 		if (steering.length > 0) this.renderLaneBox(lines, "steer", steering, width);
 		if (followUps.length > 0) this.renderLaneBox(lines, "followUp", followUps, width);
-		lines.push(truncateToWidth(this.theme.fg("dim", this.helpText()), width, ""));
+		const unsaved = this.hasUnsavedChanges()
+			? `${this.theme.fg("warning", "• unsaved")} · `
+			: "";
+		lines.push(truncateToWidth(`${unsaved}${this.theme.fg("dim", this.helpText())}`, width, ""));
 		return lines;
 	}
 
@@ -279,6 +285,7 @@ export default function queueSteerExtension(pi: ExtensionAPI) {
 				items,
 				editingId: editSession?.selectedId,
 				renderInlineEditor,
+				hasUnsavedChanges: () => editSession?.hasChanges(queue, ctx.ui.getEditorText()) ?? false,
 				paused,
 				modes: queueModes(),
 				theme,

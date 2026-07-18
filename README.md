@@ -72,6 +72,7 @@ The extension hands messages back to Pi’s native queues only when their delive
 - `Option+Up` and `Option+Down` reorder the selected row within its section
 - moving past a section boundary transfers the row to the adjacent lane at that boundary
 - queue moves preview immediately and commit only when the editing session is saved
+- the shared help line shows `• unsaved` whenever text, order, lane, or removal changes are pending
 - `Option+X` marks the selected row for removal; save deletes it, and `Escape` or a second `Option+X` restores it
 - a selected row becomes the real editor without a nested composer frame
 - one editing session can hold drafts for several rows

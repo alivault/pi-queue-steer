@@ -332,6 +332,31 @@ export class QueueEditSession<TImage = unknown> {
 		return images ? [...images] : undefined;
 	}
 
+	hasChanges(queue: DeliveryQueue<TImage>, currentText = this.selectedText): boolean {
+		const committedOrder = queue.snapshot().map((item) => item.id);
+		const draftOrder = this.orderedIds(queue);
+		if (
+			committedOrder.length !== draftOrder.length ||
+			committedOrder.some((id, index) => draftOrder[index] !== id)
+		) {
+			return true;
+		}
+
+		for (const draft of this.drafts.values()) {
+			const item = queue.get(draft.id);
+			if (!item) continue;
+			const text = draft.id === this.currentId ? currentText : draft.text;
+			if (draft.removed || draft.lane !== item.lane || text !== item.text) return true;
+			if (
+				draft.images.length !== item.images.length ||
+				draft.images.some((image, index) => image !== item.images[index])
+			) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 	commit(
 		queue: DeliveryQueue<TImage>,
 		currentText: string,
