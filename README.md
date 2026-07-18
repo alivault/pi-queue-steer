@@ -50,7 +50,7 @@ The extension follows your configured Pi action bindings. These are the default 
 | Queue paused after an abort | `Enter` | Resume from the next steering row, or the next follow-up |
 | Agent working, queue visible | `Escape` | Abort the run and pause both visible lanes |
 
-The arrow, `Option+Arrow`, and `Option+X` controls are fixed shortcuts. The other controls use Pi’s configured action bindings. Terminals outside macOS may label `Option` as `Alt`.
+The arrow, `Option+Arrow`, and `Option+X` controls are fixed shortcuts. The other controls use Pi’s configured action bindings. Terminals outside macOS may label `Option` as `Alt`. On-screen help always uses compact symbols such as `↑↓`, `⌥↑↓`, and `⌥X`.
 
 ## Delivery semantics
 

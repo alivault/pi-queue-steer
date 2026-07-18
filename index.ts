@@ -54,6 +54,13 @@ function fitCell(content: string, width: number): string {
 	return clipped + " ".repeat(Math.max(0, width - visibleWidth(clipped)));
 }
 
+function compactKeyText(key: string): string {
+	return key
+		.replace(/^alt\+/i, "⌥")
+		.replace(/^option\+/i, "⌥")
+		.replace(/^escape$/i, "esc");
+}
+
 interface QueueModes {
 	steer: QueueMode;
 	followUp: QueueMode;
@@ -127,20 +134,18 @@ class QueueTimelineWidget implements Component {
 	}
 
 	private helpText(): string {
-		const followUp = keyText("app.message.followUp");
-		const submit = keyText("tui.input.submit");
-		const interrupt = keyText("app.interrupt");
-		const selectKeys = `${SELECT_PREVIOUS_ROW_KEY}/${SELECT_NEXT_ROW_KEY}`;
-		const moveKeys = `${MOVE_PREVIOUS_ROW_KEY}/${MOVE_NEXT_ROW_KEY}`;
+		const followUp = compactKeyText(keyText("app.message.followUp"));
+		const submit = compactKeyText(keyText("tui.input.submit"));
+		const interrupt = compactKeyText(keyText("app.interrupt"));
 		if (this.editingId) {
 			const position = this.selectedPosition();
 			const positionPrefix = position ? `${position} · ` : "";
-			return `${positionPrefix}${selectKeys} select · ${moveKeys} move · ${REMOVE_ROW_KEY} remove · ${submit} save · ${interrupt} cancel`;
+			return `${positionPrefix}↑↓ select · ⌥↑↓ move · ⌥X remove · ${submit} save · ${interrupt} cancel`;
 		}
 		if (this.paused) {
-			return `${submit} resume · ${MOVE_PREVIOUS_ROW_KEY} edit · ${interrupt} keep paused`;
+			return `${submit} resume · ⌥↑ edit · ${interrupt} keep paused`;
 		}
-		return `${submit} steer · ${followUp} follow-up · ${MOVE_PREVIOUS_ROW_KEY} edit`;
+		return `${submit} steer · ${followUp} follow-up · ⌥↑ edit`;
 	}
 
 	private renderLaneBox(
@@ -208,7 +213,7 @@ class QueueTimelineWidget implements Component {
 			lines.push(`${border("│")} ${fitCell(`${prefix}${editorLine}`, cellWidth)} ${border("│")}`);
 		}
 		const notes: string[] = [];
-		if (item.removed) notes.push(`removed on save · ${REMOVE_ROW_KEY} undoes`);
+		if (item.removed) notes.push("removed on save · ⌥X undoes");
 		else if (item.movedLane) notes.push("moves here on save");
 		if (item.images.length > 0) {
 			notes.push(`${item.images.length} image${item.images.length === 1 ? "" : "s"} preserved`);
