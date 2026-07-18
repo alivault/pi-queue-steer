@@ -172,11 +172,13 @@ class QueueTimelineWidget implements Component {
 				lines.push(`${border("│")} ${fitCell(`${prefix}${body}`, cellWidth)} ${border("│")}`);
 				return;
 			}
-			const marker = item.held || (this.paused && armed)
+			const marker = this.paused && armed
 				? "⏸"
-				: item.lane === "steer"
-					? armed ? "◆" : "◇"
-					: armed ? "●" : "○";
+				: item.held
+					? "◈"
+					: item.lane === "steer"
+						? armed ? "◆" : "◇"
+						: armed ? "●" : "○";
 			const prefix = this.theme.fg(color, `${marker} `);
 			const moved = item.movedLane ? this.theme.fg("dim", " · moves here on save") : "";
 			const body = this.theme.fg("muted", compactText(item));

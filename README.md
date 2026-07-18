@@ -64,6 +64,15 @@ The extension keeps Pi’s 2 delivery classes:
 
 The extension hands messages back to Pi’s native queues only when their delivery boundary arrives. They remain visible and editable before that point. Pi records delivered rows as normal user messages.
 
+## Status icons
+
+- `◆` / `◇` — ready or later steering message
+- `●` / `○` — ready or later follow-up
+- `⏸` — queue paused after an abort
+- `◈` — delivery held while the row is being edited
+- `›` — selected row
+- `×` — marked for removal
+
 ## Editing semantics
 
 - `Option+Up` starts editing at the row you queued most recently
