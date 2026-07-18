@@ -179,6 +179,7 @@ export interface EditCommitResult {
 /** Rollback-safe drafts spanning rows from either delivery lane. */
 export class QueueEditSession<TImage = unknown> {
 	private readonly drafts = new Map<string, QueuedMessageDraft<TImage>>();
+	private readonly movedIds = new Set<string>();
 	private currentId: string;
 	private order: string[] | undefined;
 	readonly composerDraft: string;
@@ -293,22 +294,50 @@ export class QueueEditSession<TImage = unknown> {
 			const to = order.indexOf(adjacentId);
 			[order[from], order[to]] = [order[to]!, order[from]!];
 			this.order = order;
+			this.refreshMovedState(id, queue);
 			return true;
 		}
 
 		if (direction === "previous" && draft.lane === "followUp") {
 			draft.lane = "steer";
+			this.refreshMovedState(id, queue);
 			return true;
 		}
 		if (direction === "next" && draft.lane === "steer") {
 			draft.lane = "followUp";
+			this.refreshMovedState(id, queue);
 			return true;
 		}
 		return false;
 	}
 
+	private refreshMovedState(id: string, queue: DeliveryQueue<TImage>): void {
+		const item = queue.get(id);
+		if (!item) {
+			this.movedIds.delete(id);
+			return;
+		}
+		const lane = this.laneFor(id) ?? item.lane;
+		if (lane !== item.lane) {
+			this.movedIds.add(id);
+			return;
+		}
+
+		const committedLaneIds = queue.laneSnapshot(item.lane).map((candidate) => candidate.id);
+		const draftLaneIds = this.orderedIds(queue).filter((candidateId) => {
+			const candidate = queue.get(candidateId);
+			return candidate && (this.laneFor(candidateId) ?? candidate.lane) === lane;
+		});
+		if (committedLaneIds.indexOf(id) === draftLaneIds.indexOf(id)) this.movedIds.delete(id);
+		else this.movedIds.add(id);
+	}
+
 	laneFor(id: string): QueueLane | undefined {
 		return this.drafts.get(id)?.lane;
+	}
+
+	hasMoved(id: string): boolean {
+		return this.movedIds.has(id);
 	}
 
 	isRemoved(id: string): boolean {

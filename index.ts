@@ -70,6 +70,7 @@ interface QueueModes {
 interface TimelineItem extends QueuedMessage<ImageContent> {
 	removed: boolean;
 	movedLane: boolean;
+	movedPosition: boolean;
 	held: boolean;
 }
 
@@ -198,7 +199,11 @@ class QueueTimelineWidget implements Component {
 						? armed ? "◆" : "◇"
 						: armed ? "●" : "○";
 			const prefix = this.theme.fg(color, `${marker} `);
-			const moved = item.movedLane ? this.theme.fg("dim", " · moves here on save") : "";
+			const moved = item.movedLane
+				? this.theme.fg("dim", " · moves here on save")
+				: item.movedPosition
+					? this.theme.fg("dim", " · saves in new position")
+					: "";
 			const body = this.theme.fg("muted", compactText(item));
 			lines.push(`${border("│")} ${fitCell(`${prefix}${body}${moved}`, cellWidth)} ${border("│")}`);
 			return;
@@ -215,6 +220,7 @@ class QueueTimelineWidget implements Component {
 		const notes: string[] = [];
 		if (item.removed) notes.push("removed on save · ⌥X undoes");
 		else if (item.movedLane) notes.push("moves here on save");
+		else if (item.movedPosition) notes.push("saves in new position");
 		if (item.images.length > 0) {
 			notes.push(`${item.images.length} image${item.images.length === 1 ? "" : "s"} preserved`);
 		}
@@ -285,6 +291,7 @@ export default function queueSteerExtension(pi: ExtensionAPI) {
 				lane,
 				removed: editSession?.isRemoved(item.id) ?? false,
 				movedLane: lane !== item.lane,
+				movedPosition: editSession?.hasMoved(item.id) ?? false,
 				held: heldLane[item.lane] && (modes[item.lane] === "all" || heads[item.lane] === item.id),
 			}];
 		});
