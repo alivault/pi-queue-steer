@@ -82,6 +82,7 @@ The extension hands messages back to Pi’s native queues only when their delive
 - moving past a section boundary transfers the row to the adjacent lane at that boundary
 - queue moves preview immediately and commit only when the editing session is saved
 - reordered rows show `saves in new position`, including after selection moves elsewhere
+- a brief `↑` or `↓` marker flash makes the moved row easy to track
 - the shared help line shows the selected lane position, such as `steer 2/4`
 - it also shows `• unsaved` whenever text, order, lane, or removal changes are pending
 - `Option+X` marks the selected row for removal; save deletes it, and `Escape` or a second `Option+X` restores it

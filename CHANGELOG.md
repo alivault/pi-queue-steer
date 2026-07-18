@@ -11,6 +11,7 @@
 - Keep shortcut help compact with `↑↓`, `⌥↑↓`, and `⌥X` symbols.
 - Show a shared `• unsaved` indicator for pending text, order, lane, and removal changes.
 - Mark same-lane reorders with `saves in new position`, not only cross-lane moves.
+- Briefly flash `↑` or `↓` on a row after it moves.
 - Keep `Option+X` removal marks, restored by `Escape` or a second press and compatible with image-only rows.
 
 - Show steering and follow-ups as separate lanes in one delivery-ordered timeline.

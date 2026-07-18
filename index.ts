@@ -25,8 +25,11 @@ const SELECT_NEXT_ROW_KEY = "down";
 const MOVE_PREVIOUS_ROW_KEY = "alt+up";
 const MOVE_NEXT_ROW_KEY = "alt+down";
 const REMOVE_ROW_KEY = "alt+x";
+const MOVE_FLASH_MS = 250;
 
 type QueueMode = "all" | "one-at-a-time";
+type MoveDirection = "previous" | "next";
+type MovementFlash = { id: string; direction: MoveDirection };
 type EditorFactory = NonNullable<ReturnType<ExtensionContext["ui"]["getEditorComponent"]>>;
 type ComposedEditorFactory = EditorFactory & { [EDITOR_FEATURES]?: ReadonlySet<string> };
 type InlineEditorRenderer = (width: number) => string[];
@@ -79,6 +82,7 @@ class QueueTimelineWidget implements Component {
 	private readonly editingId: string | undefined;
 	private readonly renderInlineEditor: InlineEditorRenderer | undefined;
 	private readonly hasUnsavedChanges: () => boolean;
+	private readonly movementFlash: MovementFlash | undefined;
 	private readonly paused: boolean;
 	private readonly modes: QueueModes;
 	private readonly theme: Theme;
@@ -88,6 +92,7 @@ class QueueTimelineWidget implements Component {
 		editingId: string | undefined;
 		renderInlineEditor: InlineEditorRenderer | undefined;
 		hasUnsavedChanges: () => boolean;
+		movementFlash: MovementFlash | undefined;
 		paused: boolean;
 		modes: QueueModes;
 		theme: Theme;
@@ -96,6 +101,7 @@ class QueueTimelineWidget implements Component {
 		this.editingId = options.editingId;
 		this.renderInlineEditor = options.renderInlineEditor;
 		this.hasUnsavedChanges = options.hasUnsavedChanges;
+		this.movementFlash = options.movementFlash;
 		this.paused = options.paused;
 		this.modes = options.modes;
 		this.theme = options.theme;
@@ -180,6 +186,9 @@ class QueueTimelineWidget implements Component {
 		border: (text: string) => string,
 	): void {
 		const selected = item.id === this.editingId;
+		const flashMarker = this.movementFlash?.id === item.id
+			? this.movementFlash.direction === "previous" ? "↑" : "↓"
+			: undefined;
 		const head = laneItems[0]?.id === item.id;
 		const armed = this.modes[item.lane] === "all" || head;
 		const color = laneColor(item.lane);
@@ -191,13 +200,13 @@ class QueueTimelineWidget implements Component {
 				lines.push(`${border("│")} ${fitCell(`${prefix}${body}`, cellWidth)} ${border("│")}`);
 				return;
 			}
-			const marker = this.paused && armed
+			const marker = flashMarker ?? (this.paused && armed
 				? "⏸"
 				: item.held
 					? "◈"
 					: item.lane === "steer"
 						? armed ? "◆" : "◇"
-						: armed ? "●" : "○";
+						: armed ? "●" : "○");
 			const prefix = this.theme.fg(color, `${marker} `);
 			const moved = item.movedLane
 				? this.theme.fg("dim", " · moves here on save")
@@ -209,7 +218,7 @@ class QueueTimelineWidget implements Component {
 			return;
 		}
 
-		const prefixText = "› ";
+		const prefixText = `${flashMarker ?? "›"} `;
 		const prefixWidth = visibleWidth(prefixText);
 		const editorWidth = Math.max(1, cellWidth - prefixWidth);
 		const editorLines = this.renderInlineEditor?.(editorWidth) ?? [item.text];
@@ -243,6 +252,8 @@ export default function queueSteerExtension(pi: ExtensionAPI) {
 	let activeContext: ExtensionContext | undefined;
 	let renderInlineEditor: InlineEditorRenderer | undefined;
 	let editorInstallTimer: ReturnType<typeof setTimeout> | undefined;
+	let movementFlashTimer: ReturnType<typeof setTimeout> | undefined;
+	let movementFlash: MovementFlash | undefined;
 	let renderingInline = false;
 	let paused = false;
 	let settingsManager: SettingsManager | undefined;
@@ -313,11 +324,29 @@ export default function queueSteerExtension(pi: ExtensionAPI) {
 				editingId: editSession?.selectedId,
 				renderInlineEditor,
 				hasUnsavedChanges: () => editSession?.hasChanges(queue, ctx.ui.getEditorText()) ?? false,
+				movementFlash,
 				paused,
 				modes: queueModes(),
 				theme,
 			}),
 		);
+	};
+
+	const clearMovementFlash = (): void => {
+		if (movementFlashTimer) clearTimeout(movementFlashTimer);
+		movementFlashTimer = undefined;
+		movementFlash = undefined;
+	};
+
+	const showMovementFlash = (ctx: ExtensionContext, id: string, direction: MoveDirection): void => {
+		clearMovementFlash();
+		movementFlash = { id, direction };
+		renderQueue(ctx);
+		movementFlashTimer = setTimeout(() => {
+			movementFlashTimer = undefined;
+			movementFlash = undefined;
+			if (activeContext) renderQueue(activeContext);
+		}, MOVE_FLASH_MS);
 	};
 
 	const takeLaneBatch = (lane: QueueLane): QueuedMessage<ImageContent>[] => {
@@ -426,6 +455,7 @@ export default function queueSteerExtension(pi: ExtensionAPI) {
 		if (!session) return;
 		const result = save ? session.commit(queue, text, images) : undefined;
 
+		clearMovementFlash();
 		editSession = undefined;
 		ctx.ui.setEditorText(session.composerDraft);
 		if (result?.removed) {
@@ -440,7 +470,7 @@ export default function queueSteerExtension(pi: ExtensionAPI) {
 		if (ctx.isIdle() && !paused) dispatchFromIdle(ctx);
 	};
 
-	const selectQueueItem = (ctx: ExtensionContext, direction: "previous" | "next"): void => {
+	const selectQueueItem = (ctx: ExtensionContext, direction: MoveDirection): void => {
 		activeContext = ctx;
 		if (queue.length === 0) {
 			ctx.ui.notify("No queued messages to edit", "info");
@@ -478,14 +508,18 @@ export default function queueSteerExtension(pi: ExtensionAPI) {
 		renderQueue(ctx);
 	};
 
-	const moveQueueItem = (ctx: ExtensionContext, direction: "previous" | "next"): void => {
+	const moveQueueItem = (ctx: ExtensionContext, direction: MoveDirection): void => {
 		activeContext = ctx;
 		if (!editSession) {
 			selectQueueItem(ctx, direction);
 			return;
 		}
 		editSession.capture(ctx.ui.getEditorText());
-		editSession.move(editSession.selectedId, direction, queue);
+		const movedId = editSession.selectedId;
+		if (editSession.move(movedId, direction, queue)) {
+			showMovementFlash(ctx, movedId, direction);
+			return;
+		}
 		renderQueue(ctx);
 	};
 
@@ -676,6 +710,7 @@ export default function queueSteerExtension(pi: ExtensionAPI) {
 
 	pi.on("session_shutdown", () => {
 		if (editorInstallTimer) clearTimeout(editorInstallTimer);
+		clearMovementFlash();
 		if (activeContext?.hasUI) activeContext.ui.setWidget(WIDGET_ID, undefined);
 		activeContext = undefined;
 		renderInlineEditor = undefined;
