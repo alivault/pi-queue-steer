@@ -16,6 +16,7 @@
 - Compose with previously installed custom editors and retain their input behavior.
 - Treat row edits as snapshots: save in place; Escape rolls back the entire editing session, including removal marks and queue moves.
 - Option+Up/Down reorders rows; crossing a section boundary re-lanes the row at that boundary when saved.
+- Shift+Option+Up/Down creates session-local rows above or below the selection; they enter the delivery queue only on save.
 - Dispatch pauses only when the oldest row has an unsaved edit.
 
 Keep tests close to these invariants and visually verify TUI changes in a real Pi session.

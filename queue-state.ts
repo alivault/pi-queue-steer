@@ -174,14 +174,17 @@ export interface EditCommitResult {
 	updated: number;
 	removed: number;
 	moved: number;
+	added: number;
 }
 
 /** Rollback-safe drafts spanning rows from either delivery lane. */
 export class QueueEditSession<TImage = unknown> {
 	private readonly drafts = new Map<string, QueuedMessageDraft<TImage>>();
 	private readonly movedIds = new Set<string>();
+	private readonly newItemIds = new Set<string>();
 	private currentId: string;
 	private order: string[] | undefined;
+	private nextNewItemNumber = 1;
 	readonly composerDraft: string;
 
 	constructor(item: QueuedMessage<TImage>, composerDraft: string) {
@@ -218,6 +221,38 @@ export class QueueEditSession<TImage = unknown> {
 		return this.selectedText;
 	}
 
+	itemFor(queue: DeliveryQueue<TImage>, id: string): QueuedMessage<TImage> | undefined {
+		const queued = queue.get(id);
+		if (queued) return queued;
+		const draft = this.drafts.get(id);
+		if (!draft || !this.newItemIds.has(id)) return undefined;
+		return {
+			id: draft.id,
+			lane: draft.lane,
+			text: draft.text,
+			images: [...draft.images],
+			sequence: Number.MAX_SAFE_INTEGER,
+		};
+	}
+
+	addAdjacent(queue: DeliveryQueue<TImage>, direction: "previous" | "next"): QueuedMessage<TImage> | undefined {
+		const selected = this.itemFor(queue, this.currentId);
+		if (!selected) return undefined;
+		const order = this.orderedIds(queue);
+		const selectedIndex = order.indexOf(selected.id);
+		if (selectedIndex === -1) return undefined;
+
+		const id = `new-${this.nextNewItemNumber++}`;
+		const lane = this.laneFor(selected.id) ?? selected.lane;
+		const draft: QueuedMessageDraft<TImage> = { id, lane, text: "", images: [], removed: false };
+		this.drafts.set(id, draft);
+		this.newItemIds.add(id);
+		order.splice(direction === "previous" ? selectedIndex : selectedIndex + 1, 0, id);
+		this.order = order;
+		this.currentId = id;
+		return this.itemFor(queue, id);
+	}
+
 	/** Toggle whether the row is deleted on save. Returns the new mark. */
 	toggleRemoved(id: string): boolean | undefined {
 		const draft = this.drafts.get(id);
@@ -237,7 +272,7 @@ export class QueueEditSession<TImage = unknown> {
 	/** Current visual order, including queued rows added after editing began. */
 	orderedIds(queue: DeliveryQueue<TImage>): string[] {
 		const current = queue.snapshot();
-		const currentIds = new Set(current.map((item) => item.id));
+		const currentIds = new Set([...current.map((item) => item.id), ...this.newItemIds]);
 		const order = (this.order ?? current.map((item) => item.id)).filter((id) => currentIds.has(id));
 		const included = new Set(order);
 
@@ -246,14 +281,14 @@ export class QueueEditSession<TImage = unknown> {
 			const lane = this.laneFor(item.id) ?? item.lane;
 			let insertionIndex = -1;
 			for (let index = 0; index < order.length; index += 1) {
-				const orderedItem = queue.get(order[index]!);
+				const orderedItem = this.itemFor(queue, order[index]!);
 				if (orderedItem && (this.laneFor(orderedItem.id) ?? orderedItem.lane) === lane) {
 					insertionIndex = index + 1;
 				}
 			}
 			if (insertionIndex === -1 && lane === "steer") {
 				insertionIndex = order.findIndex((id) => {
-					const orderedItem = queue.get(id);
+					const orderedItem = this.itemFor(queue, id);
 					return orderedItem && (this.laneFor(id) ?? orderedItem.lane) === "followUp";
 				});
 			}
@@ -271,7 +306,7 @@ export class QueueEditSession<TImage = unknown> {
 	 * adjacent lane at that boundary.
 	 */
 	move(id: string, direction: "previous" | "next", queue: DeliveryQueue<TImage>): boolean {
-		const item = queue.get(id);
+		const item = this.itemFor(queue, id);
 		if (!item) return false;
 		let draft = this.drafts.get(id);
 		if (!draft) {
@@ -281,7 +316,7 @@ export class QueueEditSession<TImage = unknown> {
 
 		const order = this.orderedIds(queue);
 		const laneForId = (candidateId: string): QueueLane | undefined => {
-			const candidate = queue.get(candidateId);
+			const candidate = this.itemFor(queue, candidateId);
 			return candidate ? this.laneFor(candidateId) ?? candidate.lane : undefined;
 		};
 		const laneIds = order.filter((candidateId) => laneForId(candidateId) === draft.lane);
@@ -312,6 +347,10 @@ export class QueueEditSession<TImage = unknown> {
 	}
 
 	private refreshMovedState(id: string, queue: DeliveryQueue<TImage>): void {
+		if (this.newItemIds.has(id)) {
+			this.movedIds.delete(id);
+			return;
+		}
 		const item = queue.get(id);
 		if (!item) {
 			this.movedIds.delete(id);
@@ -325,7 +364,7 @@ export class QueueEditSession<TImage = unknown> {
 
 		const committedLaneIds = queue.laneSnapshot(item.lane).map((candidate) => candidate.id);
 		const draftLaneIds = this.orderedIds(queue).filter((candidateId) => {
-			const candidate = queue.get(candidateId);
+			const candidate = this.itemFor(queue, candidateId);
 			return candidate && (this.laneFor(candidateId) ?? candidate.lane) === lane;
 		});
 		if (committedLaneIds.indexOf(id) === draftLaneIds.indexOf(id)) this.movedIds.delete(id);
@@ -338,6 +377,10 @@ export class QueueEditSession<TImage = unknown> {
 
 	hasMoved(id: string): boolean {
 		return this.movedIds.has(id);
+	}
+
+	isNew(id: string): boolean {
+		return this.newItemIds.has(id);
 	}
 
 	isRemoved(id: string): boolean {
@@ -362,6 +405,7 @@ export class QueueEditSession<TImage = unknown> {
 	}
 
 	hasChanges(queue: DeliveryQueue<TImage>, currentText = this.selectedText): boolean {
+		if (this.newItemIds.size > 0) return true;
 		const committedOrder = queue.snapshot().map((item) => item.id);
 		const draftOrder = this.orderedIds(queue);
 		if (
@@ -395,12 +439,27 @@ export class QueueEditSession<TImage = unknown> {
 		let updated = 0;
 		let removed = 0;
 		let moved = 0;
+		let added = 0;
+		const newIdMap = new Map<string, string>();
 		for (const draft of this.drafts.values()) {
+			if (this.newItemIds.has(draft.id)) {
+				if (!draft.removed && (draft.text.trim() || draft.images.length > 0)) {
+					const item = queue.enqueue(draft.lane, draft.text, draft.images);
+					newIdMap.set(draft.id, item.id);
+					added += 1;
+				}
+				continue;
+			}
 			if (draft.removed || (!draft.text.trim() && draft.images.length === 0)) {
 				if (queue.remove(draft.id)) removed += 1;
 				continue;
 			}
 			if (queue.update(draft.id, draft.text, draft.images)) updated += 1;
+		}
+		if (this.order) {
+			this.order = this.order
+				.map((id) => newIdMap.get(id) ?? id)
+				.filter((id) => !this.newItemIds.has(id));
 		}
 		// Apply lane moves in queue order so multi-row moves land at the
 		// destination tail in the same order the timeline previewed them.
@@ -411,6 +470,6 @@ export class QueueEditSession<TImage = unknown> {
 			}
 		}
 		queue.reorder(this.orderedIds(queue));
-		return { updated, removed, moved };
+		return { updated, removed, moved, added };
 	}
 }

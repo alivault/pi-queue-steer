@@ -42,6 +42,7 @@ The extension follows your configured Pi action bindings. These are the default 
 | Editing a row | `Up` or `Down` | Keep the current draft and select the previous or next visual row |
 | Autocomplete visible | `Up` or `Down` | Navigate suggestions without changing the selected queue row |
 | Editing a row | `Option+Up` or `Option+Down` | Move the selected row; crossing a section boundary moves it to the other lane |
+| Editing a row | `Shift+Option+Up` or `Shift+Option+Down` | Insert a new row above or below in the selected row’s lane |
 | Editing a row | Type normally | Edit directly inside the selected row |
 | Editing a row | `Option+X` | Mark the selected row for removal; save deletes it, a second press restores it |
 | Editing a row | `Enter` or `Option+Enter` | Save all row edits and queue moves |
@@ -50,7 +51,7 @@ The extension follows your configured Pi action bindings. These are the default 
 | Queue paused after an abort | `Enter` | Resume from the next steering row, or the next follow-up |
 | Agent working, queue visible | `Escape` | Abort the run and pause both visible lanes |
 
-The arrow, `Option+Arrow`, and `Option+X` controls are fixed shortcuts. The other controls use Pi’s configured action bindings. Terminals outside macOS may label `Option` as `Alt`. On-screen help always uses compact symbols such as `↑↓`, `⌥↑↓`, and `⌥X`.
+The arrow, `Option+Arrow`, `Shift+Option+Arrow`, and `Option+X` controls are fixed shortcuts. The other controls use Pi’s configured action bindings. Terminals outside macOS may label `Option` as `Alt`. On-screen help always uses compact symbols such as `↑↓`, `⌥↑↓`, `⇧⌥↑↓`, and `⌥X`.
 
 ## Delivery semantics
 
@@ -80,6 +81,8 @@ The extension hands messages back to Pi’s native queues only when their delive
 - autocomplete keeps its normal `Up` and `Down` suggestion navigation
 - `Option+Up` and `Option+Down` reorder the selected row within its section
 - moving past a section boundary transfers the row to the adjacent lane at that boundary
+- `Shift+Option+Up` and `Shift+Option+Down` create a blank row above or below in the current lane
+- type the new instruction and press `Enter` to save it; `Escape` discards it with the rest of the editing session
 - queue moves preview immediately and commit only when the editing session is saved
 - reordered rows show `saves in new position`, including after selection moves elsewhere
 - a brief `↑` or `↓` marker flash makes the moved row easy to track

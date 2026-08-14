@@ -24,6 +24,8 @@ const SELECT_PREVIOUS_ROW_KEY = "up";
 const SELECT_NEXT_ROW_KEY = "down";
 const MOVE_PREVIOUS_ROW_KEY = "alt+up";
 const MOVE_NEXT_ROW_KEY = "alt+down";
+const ADD_PREVIOUS_ROW_KEY = "shift+alt+up";
+const ADD_NEXT_ROW_KEY = "shift+alt+down";
 const REMOVE_ROW_KEY = "alt+x";
 const MOVE_FLASH_MS = 250;
 
@@ -46,10 +48,13 @@ function laneColor(lane: QueueLane): ThemeColor {
 	return lane === "steer" ? "accent" : "warning";
 }
 
-function compactText(item: QueuedMessage<ImageContent>): string {
+function compactText(item: QueuedMessage<ImageContent> & { isNew?: boolean }): string {
 	const text = item.text.replace(/\s+/g, " ").trim();
 	const imageNote = item.images.length > 0 ? ` [${item.images.length} image${item.images.length === 1 ? "" : "s"}]` : "";
-	return `${text || `[image ${laneLabel(item.lane)}]`}${imageNote}`;
+	const fallback = item.isNew && item.images.length === 0
+		? `[new ${laneLabel(item.lane)}]`
+		: `[image ${laneLabel(item.lane)}]`;
+	return `${text || fallback}${imageNote}`;
 }
 
 function fitCell(content: string, width: number): string {
@@ -71,6 +76,7 @@ interface QueueModes {
 
 /** A queue row with session drafts applied for display and navigation. */
 interface TimelineItem extends QueuedMessage<ImageContent> {
+	isNew: boolean;
 	removed: boolean;
 	movedLane: boolean;
 	movedPosition: boolean;
@@ -147,7 +153,7 @@ class QueueTimelineWidget implements Component {
 		if (this.editingId) {
 			const position = this.selectedPosition();
 			const positionPrefix = position ? `${position} · ` : "";
-			return `${positionPrefix}↑↓ select · ⌥↑↓ move · ⌥X remove · ${submit} save · ${interrupt} cancel`;
+			return `${positionPrefix}↑↓ select · ⌥↑↓ move · ⇧⌥↑↓ new · ⌥X remove · ${submit} save · ${interrupt} cancel`;
 		}
 		if (this.paused) {
 			return `${submit} resume · ⌥↑ edit · ${interrupt} keep paused`;
@@ -200,7 +206,7 @@ class QueueTimelineWidget implements Component {
 				lines.push(`${border("│")} ${fitCell(`${prefix}${body}`, cellWidth)} ${border("│")}`);
 				return;
 			}
-			const marker = flashMarker ?? (this.paused && armed
+			const marker = item.isNew ? "+" : flashMarker ?? (this.paused && armed
 				? "⏸"
 				: item.held
 					? "◈"
@@ -218,7 +224,7 @@ class QueueTimelineWidget implements Component {
 			return;
 		}
 
-		const prefixText = `${flashMarker ?? "›"} `;
+		const prefixText = `${flashMarker ?? (item.isNew ? "+" : "›")} `;
 		const prefixWidth = visibleWidth(prefixText);
 		const editorWidth = Math.max(1, cellWidth - prefixWidth);
 		const editorLines = this.renderInlineEditor?.(editorWidth) ?? [item.text];
@@ -228,6 +234,7 @@ class QueueTimelineWidget implements Component {
 		}
 		const notes: string[] = [];
 		if (item.removed) notes.push("removed on save · ⌥X undoes");
+		else if (item.isNew) notes.push(`new ${laneLabel(item.lane)} · enter saves`);
 		else if (item.movedLane) notes.push("moves here on save");
 		else if (item.movedPosition) notes.push("saves in new position");
 		if (item.images.length > 0) {
@@ -292,7 +299,7 @@ export default function queueSteerExtension(pi: ExtensionAPI) {
 		const byId = new Map(snapshot.map((item) => [item.id, item]));
 		const orderedIds = editSession?.orderedIds(queue) ?? snapshot.map((item) => item.id);
 		return orderedIds.flatMap((id): TimelineItem[] => {
-			const item = byId.get(id);
+			const item = editSession?.itemFor(queue, id) ?? byId.get(id);
 			if (!item) return [];
 			const lane = editSession?.laneFor(item.id) ?? item.lane;
 			return [{
@@ -300,6 +307,7 @@ export default function queueSteerExtension(pi: ExtensionAPI) {
 				text: editSession?.textFor(item.id) ?? item.text,
 				images: editSession?.imagesFor(item.id) ?? item.images,
 				lane,
+				isNew: editSession?.isNew(item.id) ?? false,
 				removed: editSession?.isRemoved(item.id) ?? false,
 				movedLane: lane !== item.lane,
 				movedPosition: editSession?.hasMoved(item.id) ?? false,
@@ -464,6 +472,9 @@ export default function queueSteerExtension(pi: ExtensionAPI) {
 		if (result?.moved) {
 			ctx.ui.notify(`Moved ${result.moved} queued message${result.moved === 1 ? "" : "s"} to the other lane`, "info");
 		}
+		if (result?.added) {
+			ctx.ui.notify(`Added ${result.added} queued message${result.added === 1 ? "" : "s"}`, "info");
+		}
 		renderQueue(ctx);
 
 		// A pinned head may have let the agent settle while it was edited.
@@ -501,7 +512,7 @@ export default function queueSteerExtension(pi: ExtensionAPI) {
 			: index === -1 || index === ordered.length - 1
 				? ordered[0]?.id
 				: ordered[index + 1]?.id;
-		const selected = selectedId ? queue.get(selectedId) : undefined;
+		const selected = selectedId ? session.itemFor(queue, selectedId) : undefined;
 		if (!selected) return;
 		const selectedText = session.select(selected, currentText);
 		ctx.ui.setEditorText(selectedText);
@@ -520,6 +531,17 @@ export default function queueSteerExtension(pi: ExtensionAPI) {
 			showMovementFlash(ctx, movedId, direction);
 			return;
 		}
+		renderQueue(ctx);
+	};
+
+	const addQueueItem = (ctx: ExtensionContext, direction: MoveDirection): void => {
+		activeContext = ctx;
+		if (!editSession) return;
+		editSession.capture(ctx.ui.getEditorText());
+		const added = editSession.addAdjacent(queue, direction);
+		if (!added) return;
+		clearMovementFlash();
+		ctx.ui.setEditorText("");
 		renderQueue(ctx);
 	};
 
@@ -557,6 +579,14 @@ export default function queueSteerExtension(pi: ExtensionAPI) {
 
 			editor.handleInput = (data: string): void => {
 				if (editSession) {
+					if (matchesKey(data, ADD_PREVIOUS_ROW_KEY)) {
+						addQueueItem(ctx, "previous");
+						return;
+					}
+					if (matchesKey(data, ADD_NEXT_ROW_KEY)) {
+						addQueueItem(ctx, "next");
+						return;
+					}
 					if (matchesKey(data, MOVE_PREVIOUS_ROW_KEY)) {
 						moveQueueItem(ctx, "previous");
 						return;
