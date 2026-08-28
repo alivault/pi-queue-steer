@@ -19,7 +19,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+ssh://git@github.com/alivault/pi-queue-steer.git"
+    "url": "git+https://github.com/alivault/pi-queue-steer.git"
   },
   "bugs": "https://github.com/alivault/pi-queue-steer/issues",
   "homepage": "https://github.com/alivault/pi-queue-steer",

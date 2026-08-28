@@ -16,10 +16,10 @@ Move into any row to edit it. The selected row becomes the live Pi editor, with 
 
 ## Install
 
-Install the private repository over SSH:
+Install the public repository over HTTPS:
 
 ```bash
-pi install git:git@github.com:alivault/pi-queue-steer
+pi install git:https://github.com/alivault/pi-queue-steer
 ```
 
 Then start a new Pi session or run `/reload`.
