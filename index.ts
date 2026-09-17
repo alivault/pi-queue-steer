@@ -45,7 +45,7 @@ function laneLabel(lane: QueueLane): string {
 }
 
 function laneColor(lane: QueueLane): ThemeColor {
-	return lane === "steer" ? "accent" : "warning";
+	return lane === "steer" ? "warning" : "accent";
 }
 
 function compactText(item: QueuedMessage<ImageContent> & { isNew?: boolean }): string {
@@ -118,8 +118,8 @@ class QueueTimelineWidget implements Component {
 		const followUps = this.items.filter((item) => item.lane === "followUp");
 		if (width < 28) {
 			const counts = [
-				this.theme.fg("accent", `S${steering.length}`),
-				this.theme.fg("warning", `F${followUps.length}`),
+				this.theme.fg(laneColor("steer"), `S${steering.length}`),
+				this.theme.fg(laneColor("followUp"), `F${followUps.length}`),
 			].join(" ");
 			const selected = this.selectedPosition();
 			const summary = `${selected ?? `queued ${counts}`}${this.paused ? " paused" : ""}${this.hasUnsavedChanges() ? " unsaved" : ""}`;

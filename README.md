@@ -6,7 +6,7 @@ A visible steering and follow-up timeline for [Pi](https://github.com/earendil-w
 
 Personal fork of [tmustier/pi-queue-steer](https://github.com/tmustier/pi-queue-steer), with customized queue controls and presentation.
 
-Queue instructions while the agent works. Steering stays in a blue box and follow-ups stay in a yellow box beneath it. Both lanes preserve Pi’s delivery timing and can be reordered before delivery.
+Queue instructions while the agent works. Steering stays in a yellow box and follow-ups stay in a blue box beneath it. Both lanes preserve Pi’s delivery timing and can be reordered before delivery.
 
 Move into any row to edit it. The selected row becomes the live Pi editor, with its cursor, wrapping, paste handling, autocomplete and custom-editor behaviour intact.
 
@@ -59,7 +59,7 @@ The extension keeps Pi’s 2 delivery classes:
 
 - steering reaches the current run at Pi’s next safe turn boundary
 - follow-ups wait until the run finishes
-- the blue steering box remains above the yellow follow-up box
+- the yellow steering box remains above the blue follow-up box
 - each lane delivers from top to bottom in its visible order
 - Pi’s `one-at-a-time` and `all` settings apply independently at active-run delivery boundaries
 
