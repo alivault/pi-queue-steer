@@ -553,7 +553,13 @@ export default function queueSteerExtension(pi: ExtensionAPI) {
 		if (features.has(QUEUE_STEER_FEATURE)) return;
 
 		const factory = ((tui, theme, keybindings) => {
-			const editor = previousFactory?.(tui, theme, keybindings) ?? new CustomEditor(tui, theme, keybindings);
+			// Match the built-in editor's option set: pi constructs its own CustomEditor
+			// with embedWorkingStatus: true, and setCustomEditorComponent does not copy
+			// that flag across. Without it the working indicator falls out of the editor
+			// border into a separate status row.
+			const editor =
+				previousFactory?.(tui, theme, keybindings) ??
+				new CustomEditor(tui, theme, keybindings, { embedWorkingStatus: true });
 			const handleInput = editor.handleInput.bind(editor);
 			const renderEditor = editor.render.bind(editor);
 			const isShowingAutocomplete = (): boolean => {
